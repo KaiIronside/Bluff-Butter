@@ -645,8 +645,10 @@ async function resolveWinner(snap, foldWin) {
 
   // Apply chips
   const updates = {};
+// Re-fetch fresh chips to avoid stale data
+  const freshSnap = await fbGet(`rooms/${myRoomId}/players`);
   for (const w of winnersArr) {
-    const cur = players[w.id]?.chips || 0;
+    const cur = freshSnap?.[w.id]?.chips || 0;
     updates[`rooms/${myRoomId}/players/${w.id}/chips`] = cur + w.prize;
   }
   updates[`rooms/${myRoomId}/game/winners`]  = winnersArr;
@@ -663,10 +665,29 @@ async function nextRound() {
   const players = Object.values(snap.players).sort((a,b)=>a.seatIndex-b.seatIndex);
 
   // Remove broke players (< big blind)
-  for (const p of players) {
-    if (p.chips < BLIND_BIG) {
-      await fbSet(`rooms/${myRoomId}/players/${p.id}/chips`, START_CHIPS); // rebuy auto
-    }
+// Re-fetch fresh player chips
+  const freshPlayers = await fbGet(`rooms/${myRoomId}/players`);
+  const alivePlayers = players.filter(p => (freshPlayers[p.id]?.chips || 0) >= BLIND_BIG);
+  
+  if (alivePlayers.length < 2) {
+    // Game over - only 1 player has chips
+    const champ = players.reduce((a,b) => 
+      (freshPlayers[a.id]?.chips||0) > (freshPlayers[b.id]?.chips||0) ? a : b
+    );
+    const log = [`🏆 ${champ.avatar} ${champ.name} THẮNG TOÀN BỘ! Game kết thúc! 🦞`];
+    await fbUpdate(`rooms/${myRoomId}`, { 
+      status: 'waiting',
+      [`game/winners`]: [{ id: champ.id, handName: 'Vô Địch Sòng Bài', prize: 0 }],
+      [`game/log`]: log
+    });
+    showToast(`🏆 ${champ.name} thắng! Quay về lobby...`);
+    setTimeout(() => showScreen('room'), 3000);
+    return;
+  }
+
+  // Sync fresh chips into players array
+  for (const p of alivePlayers) {
+    p.chips = freshPlayers[p.id]?.chips || 0;
   }
 
   const deck = makeDeck();
@@ -675,7 +696,7 @@ async function nextRound() {
 
   // Rotate dealer
   const oldDealer = snap.game?.dealer;
-  const order = players.map(p=>p.id);
+  const order = alivePlayers.map(p=>p.id);
   const di = order.indexOf(oldDealer);
   const newDealerIdx = (di+1) % order.length;
   const sbIdx = (newDealerIdx+1) % order.length;
