@@ -298,8 +298,11 @@ async function startMultiplayerGame() {
   // Who acts first (after big blind = player after BB)
   const bbIdx = gameState.playerOrder.indexOf(bbId);
   const firstActor = gameState.playerOrder[(bbIdx+1) % gameState.playerOrder.length];
-  updates[`rooms/${myRoomId}/game/currentTurn`] = firstActor;
-
+  
+  // Set currentTurn directly in gameState BEFORE adding to updates
+  gameState.currentTurn = firstActor;
+  
+  // Now only one path for game - no conflicting ancestor/child paths
   await update(ref(db), updates);
 }
 
