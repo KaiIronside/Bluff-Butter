@@ -134,7 +134,7 @@ async function fbUpdate(path, obj) { await update(ref(db, path), obj); }
 // ═══════════════════════════════════════════
 async function createRoom() {
   const name  = qs('#input-name').value.trim() || 'Tôm Vô Danh';
-  const avatar= selectedAvatar || '🦞';
+  const avatar= window.selectedAvatar || '🦞';
   if (!name) return showToast('Nhập tên đi bạn ơi!');
 
   const roomId = Math.random().toString(36).slice(2,8).toUpperCase();
@@ -167,7 +167,7 @@ async function createRoom() {
 
 async function joinRoom() {
   const name   = qs('#input-name').value.trim() || 'Tôm Vô Danh';
-  const avatar = selectedAvatar || '🦞';
+  const avatar = window.selectedAvatar || '🦞';
   const roomId = qs('#input-room').value.trim().toUpperCase();
   if (!roomId) return showToast('Nhập mã phòng!');
 
@@ -720,7 +720,7 @@ async function leaveRoom() {
 // ═══════════════════════════════════════════
 //  UI HELPERS
 // ═══════════════════════════════════════════
-let selectedAvatar = '🦞';
+window.selectedAvatar = window.selectedAvatar || '🦞';
 
 function showScreen(name) {
   ['screen-lobby','screen-room','screen-game'].forEach(id=>{
@@ -747,10 +747,11 @@ window.playerAction = playerAction;
 window.nextRound  = nextRound;
 window.leaveRoom  = leaveRoom;
 window.toggleRules= toggleRules;
-window.selectAvatar = function(avatar) {
-  selectedAvatar = avatar;
+window.showToast = showToast;
+window.selectAvatar = function(avatar, event) {
+  window.selectedAvatar = avatar;
   document.querySelectorAll('.av-btn').forEach(b => b.classList.remove('selected'));
-  event.currentTarget.classList.add('selected');
+  if (event && event.currentTarget) event.currentTarget.classList.add('selected');
 };
 
 </script>
@@ -1365,4 +1366,3 @@ setInterval(()=>{
 </script>
 </body>
 </html>
-HTMLEOF
